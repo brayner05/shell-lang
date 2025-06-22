@@ -2,6 +2,7 @@
 #include <string>
 #include "pshellscript/lexer.hpp"
 #include "pshellscript/tokens.hpp"
+#include "debug.hpp"
 
 namespace config {
     static std::string prompt = "$ ";
@@ -10,11 +11,10 @@ namespace config {
 static int process_line(const std::string& line) {
     using namespace pshellscript;
     auto tokens = lexer::scan_tokens(line);
-    for (auto& token : tokens) {
-        std::cout << token.to_string() << '\n';
-    }
+    debug::dump_tokens(tokens);
     return 0;
 }
+
 
 int main() {
     std::string line;

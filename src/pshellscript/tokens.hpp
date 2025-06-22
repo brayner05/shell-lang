@@ -6,8 +6,19 @@
 namespace pshellscript {
     struct Token {
         enum class Type {
-            Plus, Minus, Slash, Asterisk,
-            Number
+            Plus, PlusEqual, Minus, MinusEqual, 
+            Slash, SlashEqual, Asterisk, AsteriskEqual,
+
+            Equal, EqualEqual, Bang, BangEqual,
+            Less, LessEqual, Greater, GreaterEqual,
+
+            Function, If, Else, For, Variable, Identifier,
+            Return, Echo,
+
+            LeftParen, RightParen, LeftBrace, RightBrace, 
+            LeftBracket, RightBracket,
+
+            String, Number
         };
     
         // Member declarations

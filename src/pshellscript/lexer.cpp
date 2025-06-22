@@ -1,4 +1,8 @@
+#include <map>
 #include "lexer.hpp"
+
+#define CREATE_KEYWORD(lexeme, token_type) \
+    { (lexeme), (token_type) }
 
 namespace pshellscript::lexer {
     struct LexerState {
@@ -40,6 +44,18 @@ namespace pshellscript::lexer {
 
         void scan_token();
         void scan_number();
+        void scan_keyword();
+        void scan_string();
+    };
+
+
+    static std::map<std::string, Token::Type> keywords = {
+        CREATE_KEYWORD("function", Token::Type::Function),
+        CREATE_KEYWORD("If", Token::Type::If),
+        CREATE_KEYWORD("Else", Token::Type::Else),
+        CREATE_KEYWORD("For", Token::Type::For),
+        CREATE_KEYWORD("return", Token::Type::Return),
+        CREATE_KEYWORD("echo", Token::Type::Echo)
     };
 
 
@@ -68,11 +84,86 @@ namespace pshellscript::lexer {
                 this->append_token(Token::Type::Slash);
                 break;
             }
+
+            case '=': {
+                if (this->peek() == '=') {
+                    this->append_token(Token::Type::EqualEqual);
+                    break;
+                }
+                this->append_token(Token::Type::Equal);
+                break;
+            }
             
+            case '!': {
+                if (this->peek() == '=') {
+                    this->append_token(Token::Type::BangEqual);
+                    break;
+                }
+                this->append_token(Token::Type::Bang);
+                break;
+            }
+
+            case '<': {
+                if (this->peek() == '=') {
+                    this->append_token(Token::Type::LessEqual);
+                    break;
+                }
+                this->append_token(Token::Type::Less);
+                break;
+            }
+
+            case '>': {
+                if (this->peek() == '=') {
+                    this->append_token(Token::Type::GreaterEqual);
+                    break;
+                }
+                this->append_token(Token::Type::GreaterEqual);
+                break;
+            }
+
+            case '(': {
+                this->append_token(Token::Type::LeftParen);
+                break;
+            }
+
+            case ')': {
+                this->append_token(Token::Type::RightParen);
+                break;
+            }
+
+            case '{': {
+                this->append_token(Token::Type::LeftBrace);
+                break;
+            }
+
+            case '}': {
+                this->append_token(Token::Type::RightBrace);
+                break;
+            }
+
+            case '[': {
+                this->append_token(Token::Type::LeftBracket);
+                break;
+            }
+
+            case ']': {
+                this->append_token(Token::Type::RightBracket);
+                break;
+            }
+
+            case '"': {
+                this->scan_string();
+                break;
+            }
 
             default: {
                 if (std::isdigit(int(character))) {
                     this->scan_number();
+                    break;
+                }
+
+                if (std::isalpha(int(character))) {
+                    this->scan_keyword();
                     break;
                 }
             }
@@ -93,6 +184,37 @@ namespace pshellscript::lexer {
         }
 
         this->append_token(Token::Type::Number);
+    }
+
+
+    void LexerState::scan_string() {
+        while (this->has_next() && this->peek() != '"') {
+            this->next();
+        }
+
+        if (this->has_next()) {
+            this->next();
+            this->append_token(Token::Type::String);
+            return;
+        }
+    }
+
+
+    void LexerState::scan_keyword() {
+        while (this->has_next() && std::isalpha(int(this->peek()))) {
+            this->next();
+        }
+
+        auto lexeme_length = this->current_position - this->start_position;
+        auto keyword = this->source.substr(this->start_position, lexeme_length);
+
+        if (!keywords.count(keyword)) {
+            this->append_token(Token::Type::Identifier);
+            return;
+        }
+
+        auto keyword_type = keywords[keyword];
+        this->append_token(keyword_type);
     }
 
 
