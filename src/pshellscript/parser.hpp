@@ -172,19 +172,154 @@ namespace pshellscript::parser::ast {
     };
 
 
-    struct AdditionNode : public BaseNode {
+    struct BinaryExpressionNode : public BaseNode {
         std::unique_ptr<BaseNode> left_argument;
         std::unique_ptr<BaseNode> right_argument;
+        std::string lexeme;
 
-        inline AdditionNode(
+        inline BinaryExpressionNode(
+            NodeType type,
+            const std::string& lexeme,
             std::unique_ptr<BaseNode> left_argument,
             std::unique_ptr<BaseNode> right_argument
-        ) : BaseNode(NodeType::AddExpression),
+        ) : BaseNode(type),
             left_argument(std::move(left_argument)),
-            right_argument(std::move(right_argument)) {}
+            right_argument(std::move(right_argument)),
+            lexeme(lexeme) {}
         
         std::string to_string() const override;
     };
+
+
+    struct AdditionNode : public BinaryExpressionNode {
+        inline AdditionNode(
+            std::unique_ptr<BaseNode> left_argument,
+            std::unique_ptr<BaseNode> right_argument
+        ) : BinaryExpressionNode(
+            NodeType::AddExpression,
+            "+",
+            std::move(left_argument),
+            std::move(right_argument)
+        ) {}
+    };
+
+
+    struct SubtractionNode : public BinaryExpressionNode {
+        inline SubtractionNode(
+            std::unique_ptr<BaseNode> left_argument,
+            std::unique_ptr<BaseNode> right_argument
+        ) : BinaryExpressionNode(
+            NodeType::SubtractExpression,
+            "-",
+            std::move(left_argument),
+            std::move(right_argument)
+        ) {}
+    };
+
+
+    struct MultiplicationNode : public BinaryExpressionNode {
+        inline MultiplicationNode(
+            std::unique_ptr<BaseNode> left_argument,
+            std::unique_ptr<BaseNode> right_argument
+        ) : BinaryExpressionNode(
+            NodeType::MultiplyExpression,
+            "*",
+            std::move(left_argument),
+            std::move(right_argument)
+        ) {}
+    };
+
+
+    struct DivisionNode : public BinaryExpressionNode {
+        inline DivisionNode(
+            std::unique_ptr<BaseNode> left_argument,
+            std::unique_ptr<BaseNode> right_argument
+        ) : BinaryExpressionNode(
+            NodeType::DivideExpression,
+            "/",
+            std::move(left_argument),
+            std::move(right_argument)
+        ) {}
+    };
+
+
+    struct ModuloNode : public BinaryExpressionNode {
+        inline ModuloNode(
+            std::unique_ptr<BaseNode> left_argument,
+            std::unique_ptr<BaseNode> right_argument
+        ) : BinaryExpressionNode(
+            NodeType::ModuloExpression,
+            "%",
+            std::move(left_argument),
+            std::move(right_argument)
+        ) {}
+    };
+
+
+    struct AndNode : public BinaryExpressionNode {
+        inline AndNode(
+            std::unique_ptr<BaseNode> left_argument,
+            std::unique_ptr<BaseNode> right_argument
+        ) : BinaryExpressionNode(
+            NodeType::AndExpression,
+            "&&",
+            std::move(left_argument),
+            std::move(right_argument)
+        ) {}
+    };
+
+
+    struct OrNode : public BinaryExpressionNode {
+        inline OrNode(
+            std::unique_ptr<BaseNode> left_argument,
+            std::unique_ptr<BaseNode> right_argument
+        ) : BinaryExpressionNode(
+            NodeType::OrExpression,
+            "||",
+            std::move(left_argument),
+            std::move(right_argument)
+        ) {}
+    };
+
+
+    struct UnaryExpressionNode : public BaseNode {
+        std::unique_ptr<BaseNode> argument;
+        std::string lexeme;
+
+        inline UnaryExpressionNode(
+            NodeType type,
+            std::unique_ptr<BaseNode> argument,
+            const std::string& lexeme
+        ) : BaseNode(type),
+            argument(std::move(argument)),
+            lexeme(lexeme) {}
+
+        std::string to_string() const override;
+    };
+
+
+    struct NotExpressionNode : public UnaryExpressionNode {
+        inline NotExpressionNode(
+            std::unique_ptr<BaseNode> argument
+        ) : UnaryExpressionNode(
+            NodeType::AndExpression, 
+            std::move(argument), 
+            "!"
+        ) {}
+    };
+
+
+    struct NegationExpressionNode : public UnaryExpressionNode {
+        inline NegationExpressionNode(
+            std::unique_ptr<BaseNode> argument
+        ) : UnaryExpressionNode(
+            NodeType::ArithmeticNegationExpression, 
+            std::move(argument), 
+            "-"
+        ) {}
+    };
+
+    // TODO Implement function calls.
 }
 
 #endif

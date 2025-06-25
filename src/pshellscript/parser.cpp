@@ -4,35 +4,35 @@
 namespace pshellscript::parser::ast {
     std::string NumberNode::to_string() const {
         std::stringstream stream;
-        stream << '(' << this->value << ')';
+        stream <<this->value;
         return stream.str();
     }
 
 
     std::string StringNode::to_string() const {
         std::stringstream stream;
-        stream << "(\"" << this->value << "\")";
+        stream << "\"" << this->value << "\"";
         return stream.str();
     }
 
 
     std::string BooleanNode::to_string() const {
         std::stringstream stream;
-        stream << '(' << (this->value ? "true" : "false") << ')';
+        stream << (this->value ? "true" : "false");
         return stream.str();
     }
 
 
     std::string VariableNode::to_string() const {
         std::stringstream stream;
-        stream << "($" << this->name << ")";
+        stream << "$" << this->name;
         return stream.str();
     }
 
 
     std::string IdentifierNode::to_string() const {
         std::stringstream stream;
-        stream << '(' << this->name << ')';
+        stream << this->name;
         return stream.str();
     }
 
@@ -42,7 +42,7 @@ namespace pshellscript::parser::ast {
 
         stream << '(';
         for (const auto& statement : this->statements) {
-            stream << statement->to_string() << ',';
+            stream << statement->to_string() << ' ';
         }
         stream << ')';
 
@@ -88,7 +88,7 @@ namespace pshellscript::parser::ast {
 
         stream << "(function [";
         for (const auto& param : this->parameters) {
-            stream << param.to_string() << ',';
+            stream << param.to_string() << ", ";
         }
         stream << "]";
         stream << this->body->to_string() << ")";
@@ -117,9 +117,32 @@ namespace pshellscript::parser::ast {
     }
 
 
-    std::string AdditionNode::to_string() const {
+    std::string BinaryExpressionNode::to_string() const {
         std::stringstream stream;
-        
+
+        stream
+            << "("
+            << this->lexeme
+            << ' '
+            << this->left_argument->to_string()
+            << " "
+            << this->right_argument->to_string()
+            << ")";
+
+        return stream.str();
+    }
+
+
+    std::string UnaryExpressionNode::to_string() const {
+        std::stringstream stream;
+
+        stream
+            << "("
+            << this->lexeme
+            << ' '
+            << this->argument->to_string()
+            << ")";
+
         return stream.str();
     }
 }
