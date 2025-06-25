@@ -169,6 +169,16 @@ namespace pshellscript {
                 stream << "RightBracket";
                 break;
             }
+
+            case Type::AndAnd: {
+                stream << "AndAnd";
+                break;
+            }
+
+            case Type::OrOr: {
+                stream << "OrOr";
+                break;
+            }
         }
     
         stream << ", \'" << this->lexeme << "\' )";

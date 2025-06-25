@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <cstdlib>
 #include "pshellscript/lexer.hpp"
 #include "pshellscript/tokens.hpp"
 #include "debug.hpp"
@@ -17,6 +18,8 @@ static int process_line(const std::string& line) {
 
 
 int main() {
+    std::string path = std::getenv("PATH");
+    
     std::string line;
     while (1) {
         std::cout << config::prompt;

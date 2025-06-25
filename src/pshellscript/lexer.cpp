@@ -9,7 +9,7 @@ namespace pshellscript::lexer {
         const std::string& source;
         long current_position = 0;
         long start_position = 0;
-        std::vector<Token> tokens;
+        std::vector<Result<Token>> tokens;
 
 
         inline LexerState(const std::string& source)
@@ -197,6 +197,8 @@ namespace pshellscript::lexer {
             this->append_token(Token::Type::String);
             return;
         }
+
+        this->tokens.push_back(Error("Unterminated string"));
     }
 
 
@@ -218,7 +220,7 @@ namespace pshellscript::lexer {
     }
 
 
-    std::vector<Token> scan_tokens(const std::string& source) {
+    std::vector<Result<Token>> scan_tokens(const std::string& source) {
         LexerState state(source);
 
         while (state.has_next()) {

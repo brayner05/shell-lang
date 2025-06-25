@@ -11,6 +11,7 @@ namespace pshellscript {
 
             Equal, EqualEqual, Bang, BangEqual,
             Less, LessEqual, Greater, GreaterEqual,
+            AndAnd, OrOr,
 
             Function, If, Else, For, Variable, Identifier,
             Return, Echo,
