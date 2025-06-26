@@ -38,8 +38,12 @@ namespace pshellscript::parser::ast {
     struct BaseNode {
         const NodeType type;
         virtual std::string to_string() const = 0;
+
     protected:
         inline BaseNode(NodeType type) : type(type) {}
+
+    public:
+        virtual ~BaseNode() = default;
     };
 
 
@@ -77,7 +81,7 @@ namespace pshellscript::parser::ast {
         bool value;
 
         inline BooleanNode(bool value)
-            : BaseNode(NodeType::String), value(value) {}
+            : BaseNode(NodeType::Boolean), value(value) {}
 
         std::string to_string() const override;
     };
@@ -87,7 +91,7 @@ namespace pshellscript::parser::ast {
         std::string name;
 
         inline VariableNode(const std::string& name)
-            : BaseNode(NodeType::String), name(name) {}
+            : BaseNode(NodeType::Variable), name(name) {}
 
         std::string to_string() const override;
     };
@@ -97,7 +101,7 @@ namespace pshellscript::parser::ast {
         std::string name;
 
         inline IdentifierNode(const std::string& name)
-            : BaseNode(NodeType::String), name(name) {}
+            : BaseNode(NodeType::Identifier), name(name) {}
 
         std::string to_string() const override;
     };
@@ -185,7 +189,7 @@ namespace pshellscript::parser::ast {
         std::unique_ptr<BaseNode> argument;
 
         inline ReturnStatementNode(std::unique_ptr<BaseNode> argument)
-            : BaseNode(NodeType::EchoStatement), argument(std::move(argument)) {}
+            : BaseNode(NodeType::ReturnStatement), argument(std::move(argument)) {}
 
         std::string to_string() const override;
     };
