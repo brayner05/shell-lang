@@ -8,18 +8,21 @@ namespace pshellscript {
         enum class Type {
             Plus, PlusEqual, Minus, MinusEqual, 
             Slash, SlashEqual, Asterisk, AsteriskEqual,
+            Comma, Modulo, ModuloEqual,
 
             Equal, EqualEqual, Bang, BangEqual,
             Less, LessEqual, Greater, GreaterEqual,
             AndAnd, OrOr,
 
             Function, If, Else, For, Variable, Identifier,
-            Return, Echo,
+            Return, Echo, False, True,
 
             LeftParen, RightParen, LeftBrace, RightBrace, 
             LeftBracket, RightBracket,
 
-            String, Number
+            String, Number,
+
+            Eof
         };
     
         // Member declarations

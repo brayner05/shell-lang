@@ -55,7 +55,9 @@ namespace pshellscript::lexer {
         CREATE_KEYWORD("Else", Token::Type::Else),
         CREATE_KEYWORD("For", Token::Type::For),
         CREATE_KEYWORD("return", Token::Type::Return),
-        CREATE_KEYWORD("echo", Token::Type::Echo)
+        CREATE_KEYWORD("echo", Token::Type::Echo),
+        CREATE_KEYWORD("true", Token::Type::True),
+        CREATE_KEYWORD("false", Token::Type::False)
     };
 
 
@@ -64,18 +66,44 @@ namespace pshellscript::lexer {
 
         switch (character) {
             case '+': {
+                if (this->peek() == '=') {
+                    this->append_token(Token::Type::PlusEqual);
+                    break;
+                }
                 this->append_token(Token::Type::Plus);
                 break;
             }
 
             case '-': {
+                if (this->peek() == '=') {
+                    this->append_token(Token::Type::MinusEqual);
+                    break;
+                }
                 this->append_token(Token::Type::Minus);
                 break;
             }
 
-
             case '*': {
+                if (this->peek() == '=') {
+                    this->append_token(Token::Type::AsteriskEqual);
+                    break;
+                }
                 this->append_token(Token::Type::Asterisk);
+                break;
+            }
+
+            case '%': {
+                if (this->peek() == '=') {
+                    this->append_token(Token::Type::ModuloEqual);
+                    break;
+                }
+                this->append_token(Token::Type::Modulo);
+                break;
+            }
+
+
+            case ',': {
+                this->append_token(Token::Type::Comma);
                 break;
             }
 

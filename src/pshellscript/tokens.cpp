@@ -15,6 +15,31 @@ namespace pshellscript {
                 break;
             }
 
+            case Type::Comma: {
+                stream << "Comma";
+                break;
+            }
+
+            case Type::True: {
+                stream << "Boolean(true)";
+                break;
+            }
+
+            case Type::False: {
+                stream << "Boolean(false)";
+                break;
+            }
+
+            case Type::Modulo: {
+                stream << "Modulo";
+                break;
+            }
+
+            case Type::ModuloEqual: {
+                stream << "ModuloEqual";
+                break;
+            }
+
             case Type::PlusEqual: {
                 stream << "PlusEqual";
                 break;
@@ -72,6 +97,11 @@ namespace pshellscript {
 
             case Type::Bang: {
                 stream << "BangEqual";
+                break;
+            }
+
+            case Type::Eof: {
+                stream << "Eof";
                 break;
             }
 

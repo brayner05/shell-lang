@@ -4,8 +4,9 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include "../result.hpp"
+#include "tokens.hpp"
 
-namespace pshellscript::parser {}
 
 namespace pshellscript::parser::ast {
     enum class NodeType {
@@ -22,7 +23,14 @@ namespace pshellscript::parser::ast {
         ComparisonExpression, AddExpression, SubtractExpression,
         MultiplyExpression, DivideExpression, ModuloExpression,
         LogicalNegationExpression, ArithmeticNegationExpression,
-        FunctionCall,
+        FunctionCall, ParamList, ArgList,
+        LessExpression, LessEqualExpression, 
+        GreaterExpression, GreaterEqualExpression,
+        PlusEqualExpression, MinusEqualExpression,
+        TimesEqualExpression, DivideEqualExpression,
+        ModuloEqualExpression,
+        InequalityExpression,
+        AssignmentExpression
     };
 
 
@@ -38,7 +46,7 @@ namespace pshellscript::parser::ast {
     struct StatementListNode : public BaseNode {
         std::vector<std::unique_ptr<BaseNode>> statements;
 
-        inline StatementListNode(std::vector<std::unique_ptr<BaseNode>> statements)
+        inline StatementListNode(std::vector<std::unique_ptr<BaseNode>>&& statements)
             : BaseNode(NodeType::StatementList), statements(std::move(statements)) {}
 
         std::string to_string() const override;
@@ -134,14 +142,25 @@ namespace pshellscript::parser::ast {
     };
 
 
+    struct ParamListNode : public BaseNode {
+        std::vector<std::unique_ptr<IdentifierNode>> parameters;
+
+        inline ParamListNode(
+            std::vector<std::unique_ptr<IdentifierNode>>&& parameters
+        ) : BaseNode(NodeType::ParamList), parameters(std::move(parameters)) {}
+
+        std::string to_string() const override;
+    };
+
+
     struct FunctionDefinitionNode : public BaseNode {
         std::string name;
-        std::vector<VariableNode> parameters;
+        std::unique_ptr<ParamListNode> parameters;
         std::unique_ptr<StatementListNode> body;
 
         inline FunctionDefinitionNode(
             const std::string& name,
-            const std::vector<VariableNode>& parameters,
+            std::unique_ptr<ParamListNode> parameters,
             std::unique_ptr<StatementListNode> body
         ) : BaseNode(NodeType::FunctionDefinition),
             name(name),
@@ -282,6 +301,97 @@ namespace pshellscript::parser::ast {
     };
 
 
+    struct LessNode : public BinaryExpressionNode {
+        inline LessNode(
+            std::unique_ptr<BaseNode> left_argument,
+            std::unique_ptr<BaseNode> right_argument
+        ) : BinaryExpressionNode(
+            NodeType::LessExpression,
+            "<",
+            std::move(left_argument),
+            std::move(right_argument)
+        ) {}
+    };
+
+
+    struct LessEqualNode : public BinaryExpressionNode {
+        inline LessEqualNode(
+            std::unique_ptr<BaseNode> left_argument,
+            std::unique_ptr<BaseNode> right_argument
+        ) : BinaryExpressionNode(
+            NodeType::LessEqualExpression,
+            "<=",
+            std::move(left_argument),
+            std::move(right_argument)
+        ) {}
+    };
+
+
+    struct GreaterNode : public BinaryExpressionNode {
+        inline GreaterNode(
+            std::unique_ptr<BaseNode> left_argument,
+            std::unique_ptr<BaseNode> right_argument
+        ) : BinaryExpressionNode(
+            NodeType::GreaterExpression,
+            ">",
+            std::move(left_argument),
+            std::move(right_argument)
+        ) {}
+    };
+
+
+    struct GreaterEqualNode : public BinaryExpressionNode {
+        inline GreaterEqualNode(
+            std::unique_ptr<BaseNode> left_argument,
+            std::unique_ptr<BaseNode> right_argument
+        ) : BinaryExpressionNode(
+            NodeType::GreaterEqualExpression,
+            ">=",
+            std::move(left_argument),
+            std::move(right_argument)
+        ) {}
+    };
+
+
+    struct EqualityNode : public BinaryExpressionNode {
+        inline EqualityNode(
+            std::unique_ptr<BaseNode> left_argument,
+            std::unique_ptr<BaseNode> right_argument
+        ) : BinaryExpressionNode(
+            NodeType::EqualityExpression,
+            "==",
+            std::move(left_argument),
+            std::move(right_argument)
+        ) {}
+    };
+
+
+    struct InequalityNode : public BinaryExpressionNode {
+        inline InequalityNode(
+            std::unique_ptr<BaseNode> left_argument,
+            std::unique_ptr<BaseNode> right_argument
+        ) : BinaryExpressionNode(
+            NodeType::InequalityExpression,
+            "!=",
+            std::move(left_argument),
+            std::move(right_argument)
+        ) {}
+    };
+
+
+    struct AssignmentNode : public BinaryExpressionNode {
+        inline AssignmentNode(
+            std::unique_ptr<BaseNode> left_argument,
+            std::unique_ptr<BaseNode> right_argument
+        ) : BinaryExpressionNode(
+            NodeType::AssignmentExpression,
+            "=",
+            std::move(left_argument),
+            std::move(right_argument)
+        ) {}
+    };
+
+
     struct UnaryExpressionNode : public BaseNode {
         std::unique_ptr<BaseNode> argument;
         std::string lexeme;
@@ -319,7 +429,94 @@ namespace pshellscript::parser::ast {
         ) {}
     };
 
-    // TODO Implement function calls.
+
+    struct ArgListNode : public BaseNode {
+        std::vector<std::unique_ptr<BaseNode>> arguments;
+
+        inline ArgListNode(std::vector<std::unique_ptr<BaseNode>>&& arguments)
+            : BaseNode(NodeType::ArgList), arguments(std::move(arguments)) {}
+
+        std::string to_string() const override;
+    };
+
+
+    struct FunctionCallNode : public BaseNode {
+        std::unique_ptr<IdentifierNode> name;
+        std::unique_ptr<ArgListNode> arguments;
+
+        inline FunctionCallNode(
+            std::unique_ptr<IdentifierNode> name,
+            std::unique_ptr<ArgListNode> arguments
+        ) : BaseNode(NodeType::FunctionCall),
+            name(std::move(name)),
+            arguments(std::move(arguments)) {}
+
+        std::string to_string() const override;
+    };
 }
+
+
+namespace pshellscript::parser {
+    class Parser {
+    private:
+        std::vector<Token> token_stream;
+        std::vector<Error> errors;
+        long token_number = 0;
+
+
+        inline Token& next() {
+            return this->token_stream[this->token_number++];
+        }
+
+
+        inline bool has_next() {
+            return size_t(this->token_number) < this->token_stream.size();
+        }
+
+
+        inline Token::Type peek_type() {
+            if (!this->has_next()) {
+                return Token::Type::Eof;
+            } else {
+                auto token = this->token_stream[this->token_number];
+                return token.type;
+            }
+        }
+
+
+        std::unique_ptr<ast::BaseNode> statement();
+        std::unique_ptr<ast::BaseNode> for_loop();
+        std::unique_ptr<ast::BaseNode> if_statement();
+        std::unique_ptr<ast::BaseNode> else_clause();
+        std::unique_ptr<ast::BaseNode> function_definition();
+        std::unique_ptr<ast::BaseNode> param_list();
+        std::unique_ptr<ast::BaseNode> echo_statement();
+        std::unique_ptr<ast::BaseNode> return_statement();
+        std::unique_ptr<ast::BaseNode> expression();
+        std::unique_ptr<ast::BaseNode> assignment();
+        std::unique_ptr<ast::BaseNode> disjunction();
+        std::unique_ptr<ast::BaseNode> conjunction();
+        std::unique_ptr<ast::BaseNode> equality();
+        std::unique_ptr<ast::BaseNode> comparison();
+        std::unique_ptr<ast::BaseNode> term();
+        std::unique_ptr<ast::BaseNode> factor();
+        std::unique_ptr<ast::BaseNode> unary();
+        std::unique_ptr<ast::BaseNode> primary();
+        std::unique_ptr<ast::NumberNode> number();
+        std::unique_ptr<ast::StringNode> string();
+        std::unique_ptr<ast::VariableNode> variable();
+        std::unique_ptr<ast::ArgListNode> arg_list();
+        std::unique_ptr<ast::FunctionCallNode> function_call();
+        std::unique_ptr<ast::BaseNode> parentheses();
+        std::unique_ptr<ast::BooleanNode> boolean();
+
+    public:
+        inline Parser(const std::vector<Token>& token_stream)
+                : token_stream(token_stream) {}
+
+        std::vector<std::unique_ptr<ast::BaseNode>> parse();
+    };
+}
+
 
 #endif
