@@ -9,7 +9,7 @@ namespace pshellscript::lexer {
         const std::string& source;
         long current_position = 0;
         long start_position = 0;
-        std::vector<Result<Token>> tokens;
+        std::vector<Token> tokens;
 
 
         inline LexerState(const std::string& source)
@@ -46,14 +46,15 @@ namespace pshellscript::lexer {
         void scan_number();
         void scan_keyword();
         void scan_string();
+        void scan_variable();
     };
 
 
     static std::map<std::string, Token::Type> keywords = {
         CREATE_KEYWORD("function", Token::Type::Function),
-        CREATE_KEYWORD("If", Token::Type::If),
-        CREATE_KEYWORD("Else", Token::Type::Else),
-        CREATE_KEYWORD("For", Token::Type::For),
+        CREATE_KEYWORD("if", Token::Type::If),
+        CREATE_KEYWORD("else", Token::Type::Else),
+        CREATE_KEYWORD("for", Token::Type::For),
         CREATE_KEYWORD("return", Token::Type::Return),
         CREATE_KEYWORD("echo", Token::Type::Echo),
         CREATE_KEYWORD("true", Token::Type::True),
@@ -65,8 +66,13 @@ namespace pshellscript::lexer {
         auto character = this->next();
 
         switch (character) {
+            case ';': {
+                this->append_token(Token::Type::SemiColon);
+                break;
+            }
             case '+': {
                 if (this->peek() == '=') {
+                    this->next();
                     this->append_token(Token::Type::PlusEqual);
                     break;
                 }
@@ -76,6 +82,7 @@ namespace pshellscript::lexer {
 
             case '-': {
                 if (this->peek() == '=') {
+                    this->next();
                     this->append_token(Token::Type::MinusEqual);
                     break;
                 }
@@ -85,6 +92,7 @@ namespace pshellscript::lexer {
 
             case '*': {
                 if (this->peek() == '=') {
+                    this->next();
                     this->append_token(Token::Type::AsteriskEqual);
                     break;
                 }
@@ -94,6 +102,7 @@ namespace pshellscript::lexer {
 
             case '%': {
                 if (this->peek() == '=') {
+                    this->next();
                     this->append_token(Token::Type::ModuloEqual);
                     break;
                 }
@@ -124,6 +133,7 @@ namespace pshellscript::lexer {
             
             case '!': {
                 if (this->peek() == '=') {
+                    this->next();
                     this->append_token(Token::Type::BangEqual);
                     break;
                 }
@@ -133,6 +143,7 @@ namespace pshellscript::lexer {
 
             case '<': {
                 if (this->peek() == '=') {
+                    this->next();
                     this->append_token(Token::Type::LessEqual);
                     break;
                 }
@@ -142,10 +153,31 @@ namespace pshellscript::lexer {
 
             case '>': {
                 if (this->peek() == '=') {
+                    this->next();
                     this->append_token(Token::Type::GreaterEqual);
                     break;
                 }
                 this->append_token(Token::Type::GreaterEqual);
+                break;
+            }
+
+            case '&': {
+                if (this->peek() == '&') {
+                    this->next();
+                    this->append_token(Token::Type::AndAnd);
+                    break;
+                }
+                // Error
+                break;
+            }
+
+            case '|': {
+                if (this->peek() == '|') {
+                    this->next();
+                    this->append_token(Token::Type::OrOr);
+                    break;
+                }
+                // Error
                 break;
             }
 
@@ -181,6 +213,11 @@ namespace pshellscript::lexer {
 
             case '"': {
                 this->scan_string();
+                break;
+            }
+
+            case '$': {
+                this->scan_variable();
                 break;
             }
 
@@ -226,7 +263,15 @@ namespace pshellscript::lexer {
             return;
         }
 
-        this->tokens.push_back(Error("Unterminated string"));
+        // this->tokens.push_back(Error("Unterminated string"));
+    }
+
+
+    void LexerState::scan_variable() {
+        while (this->has_next() && std::isalpha(int(this->peek()))) {
+            this->next();
+        }
+        this->append_token(Token::Type::Variable);
     }
 
 
@@ -248,7 +293,7 @@ namespace pshellscript::lexer {
     }
 
 
-    std::vector<Result<Token>> scan_tokens(const std::string& source) {
+    std::vector<Token> scan_tokens(const std::string& source) {
         LexerState state(source);
 
         while (state.has_next()) {

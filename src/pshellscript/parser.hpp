@@ -143,10 +143,10 @@ namespace pshellscript::parser::ast {
 
 
     struct ParamListNode : public BaseNode {
-        std::vector<std::unique_ptr<IdentifierNode>> parameters;
+        std::vector<std::unique_ptr<VariableNode>> parameters;
 
         inline ParamListNode(
-            std::vector<std::unique_ptr<IdentifierNode>>&& parameters
+            std::vector<std::unique_ptr<VariableNode>>&& parameters
         ) : BaseNode(NodeType::ParamList), parameters(std::move(parameters)) {}
 
         std::string to_string() const override;
@@ -464,6 +464,12 @@ namespace pshellscript::parser {
         long token_number = 0;
 
 
+        inline std::unique_ptr<ast::BaseNode> error(const std::string& message) {
+            this->errors.push_back(message);
+            return nullptr;
+        }
+        
+
         inline Token& next() {
             return this->token_stream[this->token_number++];
         }
@@ -485,11 +491,11 @@ namespace pshellscript::parser {
 
 
         std::unique_ptr<ast::BaseNode> statement();
-        std::unique_ptr<ast::BaseNode> for_loop();
-        std::unique_ptr<ast::BaseNode> if_statement();
+        std::unique_ptr<ast::ForLoopNode> for_loop();
+        std::unique_ptr<ast::IfStatementNode> if_statement();
         std::unique_ptr<ast::BaseNode> else_clause();
-        std::unique_ptr<ast::BaseNode> function_definition();
-        std::unique_ptr<ast::BaseNode> param_list();
+        std::unique_ptr<ast::FunctionDefinitionNode> function_definition();
+        std::unique_ptr<ast::ParamListNode> param_list();
         std::unique_ptr<ast::BaseNode> echo_statement();
         std::unique_ptr<ast::BaseNode> return_statement();
         std::unique_ptr<ast::BaseNode> expression();
@@ -514,7 +520,7 @@ namespace pshellscript::parser {
         inline Parser(const std::vector<Token>& token_stream)
                 : token_stream(token_stream) {}
 
-        std::vector<std::unique_ptr<ast::BaseNode>> parse();
+        std::unique_ptr<ast::StatementListNode> parse();
     };
 }
 

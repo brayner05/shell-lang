@@ -25,7 +25,7 @@ namespace pshellscript::parser::ast {
 
     std::string VariableNode::to_string() const {
         std::stringstream stream;
-        stream << "$" << this->name;
+        stream << "(var " << this->name << ")";
         return stream.str();
     }
 
@@ -40,11 +40,9 @@ namespace pshellscript::parser::ast {
     std::string StatementListNode::to_string() const {
         std::stringstream stream;
 
-        stream << '(';
         for (const auto& statement : this->statements) {
-            stream << statement->to_string() << ' ';
+            stream << statement->to_string() << '\n';
         }
-        stream << ')';
 
         return stream.str();
     }
@@ -87,7 +85,7 @@ namespace pshellscript::parser::ast {
         std::stringstream stream;
 
         for (const auto& param : this->parameters) {
-            stream << param->name << ", ";
+            stream << param->to_string() << ", ";
         }
 
         return stream.str();
@@ -98,11 +96,13 @@ namespace pshellscript::parser::ast {
         std::stringstream stream;
 
         stream 
-            << "(function [" 
+            << "(function " 
+            << this->name
+            << "[" 
             << this->parameters->to_string()
-            << "]"
+            << "] {"
             << this->body->to_string() 
-            << ")";
+            << "})";
 
         return stream.str();
     }
@@ -122,7 +122,7 @@ namespace pshellscript::parser::ast {
         return (
             std::stringstream() 
             << "(return " 
-            << this->argument->to_string() 
+            << (this->argument ? this->argument->to_string() : "")
             << ")"
         ).str();
     }
@@ -156,10 +156,35 @@ namespace pshellscript::parser::ast {
 
         return stream.str();
     }
+    
+
+    std::string ArgListNode::to_string() const {
+        std::stringstream stream;
+
+        for (const auto& arg : this->arguments) {
+            stream << arg->to_string() << ", ";
+        }
+
+        return stream.str();
+    }
+
+
+    std::string FunctionCallNode::to_string() const {
+        std::stringstream stream;
+
+        stream 
+            << "(call "
+            << this->name->to_string()
+            << " ("
+            << this->arguments->to_string()
+            << " ))";
+
+        return stream.str();
+    }
 }
 
 namespace pshellscript::parser {
-    std::vector<std::unique_ptr<ast::BaseNode>> Parser::parse() {
+    std::unique_ptr<ast::StatementListNode> Parser::parse() {
         std::vector<std::unique_ptr<ast::BaseNode>> program;
 
         while (this->has_next()) {
@@ -167,7 +192,7 @@ namespace pshellscript::parser {
             program.push_back(std::move(statement));
         }
 
-        return program;
+        return std::make_unique<ast::StatementListNode>(std::move(program));
     }
 
 
@@ -298,11 +323,234 @@ namespace pshellscript::parser {
                 );
             }
 
+            case Type::AndAnd: {
+                return std::make_unique<ast::AndNode>(
+                    std::move(left_side), 
+                    std::move(right_side)
+                );
+            }
+
+            case Type::OrOr: {
+                return std::make_unique<ast::OrNode>(
+                    std::move(left_side), 
+                    std::move(right_side)
+                );
+            }
+
             default: {
                 return nullptr;
             }
         }
     }
+
+
+    std::unique_ptr<ast::BaseNode> Parser::statement() {
+        using Type = Token::Type;
+        auto type = this->peek_type();
+        switch (type) {
+            case Type::Function: {
+                return this->function_definition();
+            }
+
+            case Type::Echo: {
+                return this->echo_statement();
+            }
+
+            case Type::Return: {
+                return this->return_statement();
+            }
+
+            case Type::If: {
+                return this->if_statement();
+            }
+
+            case Type::For: {
+                return this->for_loop();
+            }
+
+            default: {
+                return expression();
+            }
+        }
+    }
+
+
+    std::unique_ptr<ast::ForLoopNode> Parser::for_loop() {
+        // Skip 'for.
+        this->next();
+
+        if (this->peek_type() != Token::Type::LeftParen) {
+            throw std::runtime_error("Expected '('");
+        } else {
+            this->next();
+        }
+
+        auto assignment = this->assignment();
+        if (this->peek_type() != Token::Type::SemiColon) {
+            throw std::runtime_error("Expected ';'");
+        } else {
+            this->next();
+        }
+
+        auto condition = this->expression();
+        if (this->peek_type() != Token::Type::SemiColon) {
+            throw std::runtime_error("Expected ';'");
+        } else {
+            this->next();
+        }
+
+        auto update = this->assignment();
+        if (this->peek_type() != Token::Type::RightParen) {
+            throw std::runtime_error("Expected ')'");
+        } else {
+            this->next();
+        }
+
+        if (this->peek_type() != Token::Type::LeftBrace) {
+            throw std::runtime_error("Expected '{'");
+        } else {
+            this->next();
+        }
+
+        std::vector<std::unique_ptr<ast::BaseNode>> body_statements;
+        while (this->has_next() && this->peek_type() != Token::Type::RightBrace) {
+            body_statements.push_back(this->statement());
+        }
+
+        if (this->peek_type() != Token::Type::RightBrace) {
+            throw std::runtime_error("Expected '}'");
+        } else {
+            this->next();
+        }
+
+        return std::make_unique<ast::ForLoopNode>(
+            std::move(assignment),
+            std::move(condition),
+            std::move(update),
+            std::make_unique<ast::StatementListNode>(std::move(body_statements))
+        );
+    }
+
+
+    std::unique_ptr<ast::IfStatementNode> Parser::if_statement() {
+        // Skip 'if'.
+        this->next();
+
+        // Skip '('
+        if (this->peek_type() != Token::Type::LeftParen) {
+            throw std::runtime_error("Expected '('");
+        } else {
+            this->next();
+        }
+
+        // The condition.
+        auto condition = this->expression();
+
+        // Skip ')'
+        if (this->peek_type() != Token::Type::RightParen) {
+            throw std::runtime_error("Expected ')'");
+        } else {
+            this->next();
+        }
+
+        // Skip '{'
+        if (this->peek_type() != Token::Type::LeftBrace) {
+            throw std::runtime_error("Expected '{'");
+        } else {
+            this->next();
+        }
+
+        std::vector<std::unique_ptr<ast::BaseNode>> body_statements;
+        while (this->has_next() && this->peek_type() != Token::Type::RightBrace) {
+            body_statements.push_back(this->statement());
+        }
+        
+        // Skip '}'
+        if (this->peek_type() != Token::Type::RightBrace) {
+            throw std::runtime_error("Expected '}'");
+        } else {
+            this->next();
+        }
+
+        return std::make_unique<ast::IfStatementNode>(
+            std::move(condition),
+            std::make_unique<ast::StatementListNode>(std::move(body_statements)),
+            nullptr
+        );
+    }
+
+
+    std::unique_ptr<ast::ParamListNode> Parser::param_list() {
+        std::vector<std::unique_ptr<ast::VariableNode>> params;
+
+        while (this->has_next() && this->peek_type() != Token::Type::RightParen) {
+            auto param = this->variable();
+            params.push_back(std::move(param));
+
+            // Skip comma separator
+            if (this->peek_type() == Token::Type::Comma) {
+                this->next();
+            }
+        }
+
+        return std::make_unique<ast::ParamListNode>(std::move(params));
+    }
+
+
+    std::unique_ptr<ast::FunctionDefinitionNode> Parser::function_definition() {
+        // Skip function keyword.
+        this->next();
+
+        // Get the function name.
+        if (this->peek_type() != Token::Type::Function) {
+            throw std::runtime_error("Expected an identifier.");
+        }
+
+        auto name = this->next();
+
+        // Skip the opening parenthesis.
+        if (this->peek_type() != Token::Type::LeftParen) {
+            throw std::runtime_error("Expected '('");
+        } else {
+            this->next();
+        }
+
+        // Get the list of parameters.
+        auto param_list = this->param_list();
+
+        // Skip the closing parenthesis.
+        if (this->peek_type() != Token::Type::RightParen) {
+            throw std::runtime_error("Expected ')'");
+        } else {
+            this->next();
+        }
+
+        // Skip the first curly brace.
+        if (this->peek_type() != Token::Type::LeftBrace) {
+            throw std::runtime_error("Expected '{'");
+        } else {
+            this->next();
+        }
+
+        std::vector<std::unique_ptr<ast::BaseNode>> body_statements;
+        while (this->has_next() && this->peek_type() != Token::Type::RightBrace) {
+            body_statements.push_back(this->statement());
+        }
+
+        // Skip the closing curly brace.
+        if (this->peek_type() != Token::Type::RightBrace) {
+            throw std::runtime_error("Expected '}'");
+        } else {
+            this->next();
+        }
+
+        return std::make_unique<ast::FunctionDefinitionNode>(
+            name.lexeme,
+            std::move(param_list),
+            std::make_unique<ast::StatementListNode>(std::move(body_statements))
+        );
+    }
+
 
     std::unique_ptr<ast::BaseNode> Parser::expression() {
         return this->assignment();
@@ -310,6 +558,10 @@ namespace pshellscript::parser {
 
     std::unique_ptr<ast::BaseNode> Parser::return_statement() {
         this->next();
+        if (!this->has_next()) {
+            return std::make_unique<ast::ReturnStatementNode>(nullptr);
+        }
+
         auto operand = this->expression();
         return std::make_unique<ast::ReturnStatementNode>(std::move(operand));
     }
@@ -323,7 +575,7 @@ namespace pshellscript::parser {
 
 
     std::unique_ptr<ast::BaseNode> Parser::assignment() {
-        std::unique_ptr<ast::BaseNode> left_side = this->variable();
+        std::unique_ptr<ast::BaseNode> left_side = this->disjunction();
         while (this->has_next() && this->peek_type() == Token::Type::Equal) {
             auto operation = this->next();
             auto right_side = this->disjunction();
@@ -443,16 +695,17 @@ namespace pshellscript::parser {
 
     std::unique_ptr<ast::BaseNode> Parser::unary() {
         using Type = Token::Type;
-        auto token_type = this->next().type;
+        auto token_type = this->peek_type();
 
-        auto argument = this->primary();
         switch (token_type) {
             case Type::Bang: {
-                return std::make_unique<ast::NotExpressionNode>(std::move(argument));
+                this->next();
+                return std::make_unique<ast::NotExpressionNode>(this->primary());
             }
 
             case Type::Minus: {
-                return std::make_unique<ast::NegationExpressionNode>(std::move(argument));
+                this->next();
+                return std::make_unique<ast::NegationExpressionNode>(this->primary());
             }
 
             default: {
@@ -467,6 +720,10 @@ namespace pshellscript::parser {
         auto token_type = this->peek_type();
 
         switch (token_type) {
+            case Type::Eof: {
+                throw std::runtime_error("Expected an expression.");
+            }
+
             case Type::True:
             case Type::False: {
                 return this->boolean();
@@ -502,11 +759,30 @@ namespace pshellscript::parser {
 
 
     std::unique_ptr<ast::FunctionCallNode> Parser::function_call() {
+        if (this->peek_type() != Token::Type::Identifier) {
+            throw std::runtime_error("Expected an identifier.");
+        }
+
         auto name = std::make_unique<ast::IdentifierNode>(
             this->next().lexeme
         );
 
+        if (this->peek_type() != Token::Type::LeftParen) {
+            throw std::runtime_error("Expected '('.");
+        } else {
+            this->next();
+        }
+
+        if (!this->has_next()) {
+            throw std::runtime_error("Expected an expression.");
+        }
+
         auto args = this->arg_list();
+        if (this->peek_type() != Token::Type::RightParen) {
+            throw std::runtime_error("Expected ')'.");
+        } else {
+            this->next();
+        }
 
         return std::make_unique<ast::FunctionCallNode>(
             std::move(name), 
@@ -518,9 +794,6 @@ namespace pshellscript::parser {
 
     std::unique_ptr<ast::ArgListNode> Parser::arg_list() {
         std::vector<std::unique_ptr<ast::BaseNode>> arguments;
-
-        // Skip the initial parenthesis.
-        this->next();
 
         while (this->has_next() && this->peek_type() != Token::Type::RightParen) {
             auto argument = this->expression();
@@ -537,8 +810,18 @@ namespace pshellscript::parser {
 
 
     std::unique_ptr<ast::BaseNode> Parser::parentheses() {
-        this->next();
+        auto last = this->next();
+
+        if (!this->has_next()) {
+            throw std::runtime_error("Expected an expression after " + last.lexeme);
+        }
+
         auto inner_expression = this->expression();
+
+        if (!this->has_next()) {
+            throw std::runtime_error("Expected ')'.");
+        }
+
         this->next();
         return inner_expression;
     }
@@ -554,7 +837,7 @@ namespace pshellscript::parser {
     std::unique_ptr<ast::StringNode> Parser::string() {
         auto& token = this->next();
         auto length = token.lexeme.length();
-        auto value = token.lexeme.substr(1, length - 1);
+        auto value = token.lexeme.substr(1, length - 2);
         return std::make_unique<ast::StringNode>(value);
     }
 

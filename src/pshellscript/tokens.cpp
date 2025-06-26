@@ -15,6 +15,11 @@ namespace pshellscript {
                 break;
             }
 
+            case Type::SemiColon: {
+                stream << "SemiColon";
+                break;
+            }
+
             case Type::Comma: {
                 stream << "Comma";
                 break;

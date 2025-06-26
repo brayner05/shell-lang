@@ -8,7 +8,7 @@
 #include "../result.hpp"
 
 namespace pshellscript::lexer {
-    std::vector<Result<Token>> scan_tokens(const std::string& source);
+    std::vector<Token> scan_tokens(const std::string& source);
 }
 
 #endif
